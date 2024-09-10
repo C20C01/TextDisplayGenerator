@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>🛠 文本展示实体生成工具</title>
+    <link rel="icon" href="img/favicon.png" type="image/x-icon">
+    <link type="text/css" rel="stylesheet" href="main.css">
+</head>
+<body>
+<header>
+    <div class="colorful_text">
+        <h1>🛠 文本展示实体生成工具</h1>
+    </div>
+</header>
+<div id="container">
+    <div id="left_area">
+        <div style="position:sticky; top: 8px">
+            <div class="box_area">
+                <div class="header">
+                    <h2>👀 <span class="tooltip">剔除条件<span
+                            class="tooltip_text">通过下面的参数设置实体被剔除（不被渲染）的条件，请结合具体场景权衡性能开销与展示效果。</span></span>
+                    </h2>
+                </div>
+                <div class="contents">
+                    <div class="flex">
+                        <label for="width">
+                        <span class="tooltip">宽度
+                            <span class="tooltip_text">
+                                width(Float)：当玩家看不到[x - width / 2, x + width / 2]时，剔除实体。（0为禁用基于玩家视野的剔除）
+                            </span>
+                        </span>
+                            <input type="number" id="width" value="1">
+                        </label>
+                        <label for="height">
+                        <span class="tooltip">高度
+                            <span class="tooltip_text">
+                                height(Float)：当玩家看不到[y, y + height]时，剔除实体。（0为禁用基于玩家视野的剔除）
+                            </span>
+                        </span>
+                            <input type="number" id="height" value="1">
+                        </label>
+                    </div>
+                    <label for="view_range">
+                    <span class="tooltip">距离系数
+                        <span class="tooltip_text">
+                            view_range(Float)：当玩家与实体的距离超过 view_range  × 64 × entityDistanceScaling（默认为1） 时，剔除实体。
+                        </span>
+                    </span>
+                        <input type="number" id="view_range" value="0.5" step="0.5">
+                    </label>
+                </div>
+                <br>
+            </div>
+            <div class="box_area">
+                <div class="header">
+                    <h2>📐 <span class="tooltip">相对坐标与朝向<span class="tooltip_text">通过下面的参数设置实体与其生成者的相对坐标（~X ~Y ~Z）与 实体 的朝向。</span></span>
+                    </h2>
+                </div>
+
+                <div class="contents">
+                    <div class="flex">
+                        <label for="x">X
+                            <input type="number" id="x" value="0">
+                        </label>
+                        <label for="y">Y
+                            <input type="number" id="y" value="0.5">
+                        </label>
+                        <label for="z">Z
+                            <input type="number" id="z" value="0">
+                        </label>
+                    </div>
+                    <div class="flex">
+                        <label for="yaw">
+                            <span class="tooltip">偏航<span class="tooltip_text">S: 0, W: 90, N: 180, E: 270<br>（以 S 为 0，顺时针增大）</span></span>
+                            <input type="number" id="yaw" onchange="setYaw(this.value)" value="0"
+                                   min="0" max="360" step="15">
+                        </label>
+                        <label for="pitch">
+                            <span class="tooltip">俯仰<span class="tooltip_text">⬆ : -90 , ↔ : 0 , ⬇ : 90</span></span>
+                            <input type="number" id="pitch" onchange="setPitch(this.value)"
+                                   value="0" step="15" min="-90" max="90">
+                        </label>
+                    </div>
+                    <b class="tooltip" style="margin:4px 0">快速设置
+                        <span class="tooltip_text">朝向设置：当偏航没有对齐，只调整偏航；当偏航已经对齐，将俯仰归零。<br>贴墙：后移实体（不影响无关方向上的坐标）使其背部贴墙（默认使用命令方块生成实体），并添加一定的偏移以避免Z-fighting。（只在偏航为90的整数倍且俯仰为0时可用）<br>重置：恢复初始参数。</span>
+                    </b>
+                    <div class="flex">
+                        <button id="north_button" onclick="faceTo(180)">
+                            N <span class="y_line">|</span><span class="x_line">_</span>
+                        </button>
+                        <button id="south_button" onclick="faceTo(0)">
+                            S <span class="x_line">_</span><span class="y_line">|</span>
+                        </button>
+                        <button id="east_button" onclick="faceTo(270)">
+                            E <span class="y_line">|</span><span class="z_line">_</span>
+                        </button>
+                        <button id="west_button" onclick="faceTo(90)">
+                            W <span class="z_line">_</span><span class="y_line">|</span>
+                        </button>
+                    </div>
+                    <div class="flex">
+                        <button id="on_wall_button" onclick="fitOnWall()">贴墙</button>
+                        <button onclick="resetPos()">重置</button>
+                    </div>
+                </div>
+                <br>
+            </div>
+            <div class="box_area">
+                <div class="header">
+                    <h2>🎨 个性化</h2>
+                </div>
+
+                <div class="contents">
+                    <div class="flex">
+                        <label for="alignment">
+                            <span class="tooltip">对齐<span class="tooltip_text">left：左对齐。<br>center：居中对齐。<br>right：右对齐。</span></span>
+                            <select id="alignment" onchange="editor.setStyle('textAlign', this.value)">
+                                <option value="left">left</option>
+                                <option value="center">center</option>
+                                <option value="right">right</option>
+                            </select>
+                        </label>
+                        <label for="billboard">
+                            <span class="tooltip">固定轴<span class="tooltip_text">fixed：固定偏航与俯仰。<br>vertical：固定俯仰。<br>horizontal：固定偏航。<br>center：无固定轴。</span></span>
+                            <select id="billboard">
+                                <option value="fixed">fixed</option>
+                                <option value="vertical">vertical</option>
+                                <option value="horizontal">horizontal</option>
+                                <option value="center">center</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="flex">
+                        <label for="scale">
+                            <span class="tooltip">缩放<span class="tooltip_text">通过变换矩阵实现，想实现更高级的变换请在生成的命令中手动修改“transformation”。</span></span>
+                            <input type="number" id="scale" value="1" min="0.1" max="10" step="0.1"
+                                   oninput="updateBgSize(1/this.value)">
+                        </label>
+
+                        <label for="line_width">
+                            <span class="tooltip">行宽<span
+                                    class="tooltip_text">文本框的最大宽度。</span></span>
+                            <input type="number" id="line_width" value="200" min="0" step="20">
+                        </label>
+                    </div>
+
+                    <div class="flex">
+                        <label for="light">
+                        <span class="tooltip">光照<span
+                                class="tooltip_text">-1时使用环境光照。[0, 15]时，使用指定光照等级。</span></span>
+                            <input type="number" id="light" value="15" min="-1" max="15" step="1" onchange="">
+                        </label>
+
+                        <label for="tag">
+                        <span class="tooltip">标签<span
+                                class="tooltip_text">供实体选择器（如@e[tag=cc]）使用。只能包含字母、数字和下划线。</span></span>
+                            <input type="text" id="tag" oninput="format_tag(this)" placeholder="选填">
+                        </label>
+                    </div>
+
+                    <div class="flex">
+                        <label for="see_through">隔墙可见
+                            <input type="checkbox" id="see_through">
+                        </label>
+                        <label for="shadow">文本阴影
+                            <input type="checkbox" id="shadow">
+                        </label>
+                    </div>
+
+                    <div class="flex">
+                        <label>
+                            <span class="tooltip">背景<span class="tooltip_text">可用使用取色器和数字输入框分别设置颜色和透明度进而设置背景颜色的ARGB值。也可通过文本输入栏直接设置背景颜色的ARGB值。</span></span>
+                            <label id="bg_input_area">
+                                <input type="color" id="bg_color_picker" oninput="updateBg()">
+                                <input type="number" id="bg_alpha" value="64" min="0" max="255" step="1"
+                                       oninput="updateBg()">
+                            </label>
+                        </label>
+                        <label>
+                            <input type="text" id="bg_color" placeholder="ARGB" onchange="bgChanged()">
+                        </label>
+                    </div>
+
+                    <label for="text_opacity">
+                    <span class="tooltip">文本不透明度<span
+                            class="tooltip_text">小于等于25即可完全透明。</span></span>
+                        <input type="number" id="text_opacity" value="255" min="0" max="255" step="5"
+                               oninput="editor.setTextOpacity(this.value)">
+                    </label>
+
+                </div>
+                <br>
+            </div>
+            <div class="box_area">
+                <div class="header">
+                    <h2>🛫 启动</h2>
+                </div>
+
+                <div class="contents">
+                    <div class="flex">
+                        <a href="https://github.com/C20C01/TextDisplayGenerator">
+                            <button>介绍 / 说明</button>
+                        </a>
+                    </div>
+                    <div class="flex">
+                        <button class="big_button" onclick="generate()">生成</button>
+                    </div>
+                </div>
+                <br>
+            </div>
+        </div>
+    </div>
+    <div id="right_area">
+        <div class="box_area">
+            <div class="header" style="position:sticky; top: -16px">
+                <h2>📜 <span class="tooltip">文本<span class="tooltip_text">效果仅供参考，最终效果请以游戏内为准。<br>一般情况下，编辑区的行宽大于默认行宽。<br>在使用其他地方产生的富文本时可能无法正常编辑。<br>文本不是关于实体的中心对称的😫（偏左0.125）。</span></span>
+                </h2>
+                <div class="flex">
+                    <div id="text_color_area">
+                        <label for="text_color_picker">
+                            <input type="color" id="text_color_picker">
+                        </label>
+                        <template id="text_common_color"></template>
+                    </div>
+                    <button onclick="editor.color()" title="Ctrl+D">上色</button>
+                    <button onclick="editor.wash()">去色</button>
+                    <br>
+                    <button onclick="editor.handleCommand('bold')" title="Ctrl+B"><strong>粗</strong></button>
+                    <button onclick="editor.handleCommand('italic')" title="Ctrl+I"><i>斜</i></button>
+                    <button onclick="editor.handleCommand('underline')" title="Ctrl+U"><u>划</u></button>
+                    <button onclick="editor.handleCommand('strikethrough')" title="Ctrl+S"><s>误</s></button>
+                    <button onclick="editor.handleCommand('removeFormat')" title="清除所选文本的一切格式">无</button>
+                    <br>
+                    <button onclick="editor.handleCommand('undo')" title="Ctrl+Z">撤销</button>
+                    <button onclick="editor.handleCommand('redo')" title="Ctrl+Y">重做</button>
+                    <br>
+                    <button onclick="editor.clear()">清空</button>
+                </div>
+            </div>
+
+            <div class="contents">
+                <div id="text_input_box">
+                    <div id="text_input_area">
+                        <div id="text_input" contenteditable="true"></div>
+                    </div>
+                </div>
+            </div>
+
+            <br>
+        </div>
+
+        <div class="box_area">
+            <div class="header">
+                <h2>📦 输出</h2>
+                <div class="flex">
+                    <button id="copy_button" onclick="copy()">复制</button>
+                </div>
+            </div>
+
+            <div class="contents">
+                <label for="text_output">
+                    <textarea id="text_output"></textarea>
+                </label>
+            </div>
+
+            <br>
+        </div>
+    </div>
+</div>
+<script src="TextDisplayGenerator.js"></script>
+</body>
+</html>
